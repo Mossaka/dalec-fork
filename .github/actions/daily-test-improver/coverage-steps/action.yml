@@ -1,0 +1,60 @@
+name: Generate Test Coverage Report
+description: 'Builds the project, runs tests with coverage, and generates coverage reports for analysis'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+      with:
+        go-version: '1.23'
+        cache: false
+        
+    - name: Download dependencies
+      shell: bash
+      run: |
+        set -ex -o pipefail
+        go mod download
+        
+    - name: Run unit tests with coverage
+      shell: bash
+      run: |
+        set -ex -o pipefail
+        go test -v -race -coverprofile=unit-coverage.out -covermode=atomic ./...
+        
+    - name: Run short tests with coverage  
+      shell: bash
+      run: |
+        set -ex -o pipefail
+        go test -v -race -short -coverprofile=short-coverage.out -covermode=atomic ./...
+        
+    - name: Generate HTML coverage report
+      shell: bash
+      run: |
+        set -ex -o pipefail
+        go tool cover -html=unit-coverage.out -o coverage.html
+        go tool cover -func=unit-coverage.out > coverage-summary.txt
+        
+    - name: Generate coverage statistics
+      shell: bash
+      run: |
+        set -ex -o pipefail
+        echo "=== Coverage Summary ===" > coverage-report.txt
+        echo "Generated at: $(date)" >> coverage-report.txt
+        echo "" >> coverage-report.txt
+        go tool cover -func=unit-coverage.out >> coverage-report.txt
+        echo "" >> coverage-report.txt
+        echo "=== Total Coverage ===" >> coverage-report.txt
+        go tool cover -func=unit-coverage.out | tail -n 1 >> coverage-report.txt
+        
+    - name: Upload coverage reports as artifact
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: coverage-reports
+        path: |
+          unit-coverage.out
+          short-coverage.out  
+          coverage.html
+          coverage-summary.txt
+          coverage-report.txt
+        retention-days: 7
