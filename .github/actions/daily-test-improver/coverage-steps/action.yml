@@ -1,0 +1,56 @@
+name: 'Dalec Test Coverage Steps'
+description: 'Build project, run tests, and generate coverage report'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+      with:
+        go-version: '1.23'
+        cache: false
+
+    - name: Download dependencies
+      shell: bash
+      run: go mod download
+
+    - name: Generate code
+      shell: bash
+      run: go generate
+
+    - name: Validate generated files
+      shell: bash
+      run: |
+        git diff --exit-code
+        if [ $? -ne 0 ]; then
+          echo "Missing updates to generated files. Please run 'go generate' and commit the changes"
+          exit 1
+        fi
+
+    - name: Run tests with coverage
+      shell: bash
+      run: |
+        # Create coverage directory
+        mkdir -p coverage
+        
+        # Run unit tests with coverage (excluding integration tests)
+        go test -short -coverprofile=coverage/unit.out -coverpkg=./... ./...
+        
+        # Generate coverage report in multiple formats
+        go tool cover -func=coverage/unit.out > coverage/coverage-summary.txt
+        go tool cover -html=coverage/unit.out -o coverage/coverage.html
+        
+        # Display coverage summary
+        echo "=== Coverage Summary ==="
+        cat coverage/coverage-summary.txt
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: test-coverage-report
+        path: coverage/
+        retention-days: 7
+
+    - name: Run custom linters
+      shell: bash
+      run: go run ./cmd/lint ./...
