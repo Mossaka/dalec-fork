@@ -39,8 +39,8 @@ tools:
       WebFetch:
       WebSearch:
       # Configure bash build commands here, or in .github/workflows/agentics/daily-test-improver.config.md
-      #Bash: [":*"]
-      Bash: ["gh pr create:*", "git commit:*", "git push:*", "git checkout:*", "git branch:*", "git add:*", "gh auth status", "gh repo view", "gh issue comment:*"]
+      Bash: [":*"]
+      #Bash: ["gh pr create:*", "git commit:*", "git push:*", "git checkout:*", "git branch:*", "git add:*", "gh auth status", "gh repo view", "gh issue comment:*"]
 
 steps:
   - name: Checkout repository
