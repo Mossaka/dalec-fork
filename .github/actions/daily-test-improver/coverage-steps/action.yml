@@ -1,0 +1,60 @@
+name: 'Daily Test Coverage Steps'
+description: 'Build project and generate test coverage reports'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5
+      with:
+        go-version: '1.23'
+        cache: false
+    
+    - name: Download dependencies
+      shell: bash
+      run: go mod download
+    
+    - name: Build project
+      shell: bash
+      run: go build ./...
+    
+    - name: Run tests with coverage
+      shell: bash
+      run: |
+        # Run unit tests with coverage (exclude integration tests in /test)
+        go test -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v '/test$')
+    
+    - name: Generate coverage reports
+      shell: bash
+      run: |
+        # Generate HTML coverage report
+        go tool cover -html=coverage.out -o coverage.html
+        
+        # Generate function-level coverage summary
+        go tool cover -func=coverage.out > coverage-summary.txt
+        
+        # Extract total coverage percentage
+        total_coverage=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}')
+        echo "Total coverage: $total_coverage"
+        echo "COVERAGE_PERCENT=$total_coverage" >> $GITHUB_ENV
+    
+    - name: Upload coverage report
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: coverage-report
+        path: |
+          coverage.out
+          coverage.html
+          coverage-summary.txt
+        retention-days: 7
+    
+    - name: Display coverage summary
+      shell: bash
+      run: |
+        echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Total Coverage:** $COVERAGE_PERCENT" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Coverage by File" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        go tool cover -func=coverage.out >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
